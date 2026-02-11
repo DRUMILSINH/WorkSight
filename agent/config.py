@@ -32,3 +32,14 @@ LOG_LEVEL = "INFO"
 
 AGENT_NAME = "WorkSight-Agent"
 AGENT_VERSION = "0.1.0"
+
+# =========================
+# Backend API Settings
+# =========================
+
+BACKEND_BASE_URL = "http://127.0.0.1:8080/api"
+
+SESSION_ENDPOINT = f"{BACKEND_BASE_URL}/sessions/"
+SCREENSHOT_ENDPOINT = f"{BACKEND_BASE_URL}/screenshots/"
+
+REQUEST_TIMEOUT_SECONDS = 5

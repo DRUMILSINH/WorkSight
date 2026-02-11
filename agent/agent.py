@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
-
-
+from agent.api_client import BackendClient
 
 from agent.config import (
     SCREENSHOT_DIR,
@@ -21,6 +20,7 @@ class WorkSightAgent:
     def __init__(self):
         self.logger = get_logger(LOG_DIR, LOG_FILE_NAME, LOG_LEVEL)
         self.system_info = collect_system_info()
+        self.backend = BackendClient(self.logger)
 
     def start(self):
         self.logger.info(
@@ -29,14 +29,16 @@ class WorkSightAgent:
                 "metadata": {
                     "agent": AGENT_NAME,
                     "version": AGENT_VERSION,
-                    "system": self.system_info,
+                    **self.system_info,
                 }
             },
         )
+        self.backend.create_session(self.system_info)
 
         try:
             while True:
                 screenshot_path = capture_screen(SCREENSHOT_DIR)
+                self.backend.log_screenshot(str(screenshot_path))
 
                 self.logger.info(
                     "Screenshot captured",
