@@ -1,0 +1,10 @@
+mss
+Pillow
+requests
+opencv-python
+pydrive2
+google-api-python-client
+oauth2client
+django
+mysqlclient
+python-dotenv

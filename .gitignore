@@ -1,4 +1,6 @@
-# Python
+# ==========================================
+# Python & Package Management
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -23,7 +25,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# ==========================================
+# Virtual Environments
+# ==========================================
 venv/
 env/
 ENV/
@@ -31,7 +35,9 @@ env.bak/
 venv.bak/
 .venv/
 
-# IDE and Editor
+# ==========================================
+# IDE, Editor & OS
+# ==========================================
 .vscode/
 .idea/
 *.swp
@@ -43,19 +49,55 @@ venv.bak/
 .settings/
 *.sublime-project
 *.sublime-workspace
+Thumbs.db
+*.lnk
 
-# Environment variables
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
 .env
 .env.local
 .env.*.local
 
-# Project-specific
-storage/logs/*
-storage/screenshots/*
-!storage/logs/.gitkeep
-!storage/screenshots/.gitkeep
+# ==========================================
+# Database Files
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
 
-# Testing and coverage
+# ==========================================
+# Project-Specific: Storage Directories
+# ==========================================
+# Ignore generated storage content but keep folder structure
+agent/storage/logs/*
+agent/storage/screenshots/*
+agent/storage/videos/*
+!agent/storage/logs/.gitkeep
+!agent/storage/screenshots/.gitkeep
+!agent/storage/videos/.gitkeep
+# Google OAuth credentials
+agent/credentials/token.json
+agent/credentials/credentials.json
+
+# ==========================================
+# Keep Version-Controlled Folders
+# ==========================================
+# Ensure credentials folder is tracked
+!agent/credentials/*
+
+# ==========================================
+# Django
+# ==========================================
+staticfiles/
+media/
+local_settings.py
+/server/db.sqlite3
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
 .pytest_cache/
 .coverage
 .coverage.*
@@ -63,20 +105,24 @@ htmlcov/
 .tox/
 .hypothesis/
 
-# OS specific
-Thumbs.db
-.DS_Store
-*.lnk
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+*.json
 
-# Temporary and backup files
+# ==========================================
+# Temporary & Backup Files
+# ==========================================
 *.tmp
 *.bak
-*.swp
-*~
 .#*
+*.orig
 
-# Distribution / Packaging
-.Python
-
-# Byte-compiled / optimized / DLL files
-*.so
+# ==========================================
+# Node.js (if used for frontend)
+# ==========================================
+node_modules/
+package-lock.json
+yarn.lock

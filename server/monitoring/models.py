@@ -23,7 +23,42 @@ class ScreenshotLog(models.Model):
     )
 
     image_path = models.CharField(max_length=500)
-    captured_at = models.DateTimeField()
+    captured_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Screenshot @ {self.captured_at}"
+
+class AgentHeartbeat(models.Model):
+    session = models.OneToOneField(
+        AgentSession,
+        on_delete=models.CASCADE,
+        related_name="heartbeat"
+    )
+    last_seen = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Heartbeat @ {self.last_seen}"
+
+class Recording(models.Model):
+    session = models.ForeignKey(
+        AgentSession,
+        on_delete=models.CASCADE,
+        related_name="recordings"
+    )
+    video_path = models.CharField(max_length=512)
+    drive_file_id = models.CharField(max_length=256, blank=True, null=True)
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Recording {self.id} ({self.session_id})"
+    
+class AgentToken(models.Model):
+    session = models.OneToOneField(
+        AgentSession,
+        on_delete=models.CASCADE,
+        related_name="token"
+    )
+    token = models.CharField(max_length=64, unique=True)
+

@@ -1,4 +1,4 @@
-from agent.agent import WorkSightAgent
+from agent.runtime import WorkSightAgent
 
 
 def main():

@@ -1,9 +1,9 @@
 import time
-from pathlib import Path
-from agent.api_client import BackendClient
 
+from agent.api_client import BackendClient
+from agent.logger import get_logger
+from agent.system_info import collect_system_info
 from agent.config import (
-    SCREENSHOT_DIR,
     SCREENSHOT_INTERVAL_SECONDS,
     LOG_DIR,
     LOG_FILE_NAME,
@@ -11,9 +11,10 @@ from agent.config import (
     AGENT_NAME,
     AGENT_VERSION,
 )
-from agent.system_info import collect_system_info
-from agent.screen_capture import capture_screen
-from agent.logger import get_logger
+
+from agent.services.screenshot_service import ScreenshotService
+from agent.services.heartbeat_service import HeartbeatService
+from agent.services.recording_service import RecordingService
 
 
 class WorkSightAgent:
@@ -21,6 +22,10 @@ class WorkSightAgent:
         self.logger = get_logger(LOG_DIR, LOG_FILE_NAME, LOG_LEVEL)
         self.system_info = collect_system_info()
         self.backend = BackendClient(self.logger)
+
+        self.screenshot_service = ScreenshotService(self.backend, self.logger)
+        self.heartbeat_service = HeartbeatService(self.backend)
+        self.recording_service = RecordingService(self.backend, self.logger)
 
     def start(self):
         self.logger.info(
@@ -33,26 +38,20 @@ class WorkSightAgent:
                 }
             },
         )
+
         self.backend.create_session(self.system_info)
 
         try:
             while True:
-                screenshot_path = capture_screen(SCREENSHOT_DIR)
-                self.backend.log_screenshot(str(screenshot_path))
-
-                self.logger.info(
-                    "Screenshot captured",
-                    extra={
-                        "metadata": {
-                            "path": str(screenshot_path),
-                        }
-                    },
-                )
+                self.heartbeat_service.tick()
+                self.screenshot_service.capture_and_send()
+                self.recording_service.maybe_record()
 
                 time.sleep(SCREENSHOT_INTERVAL_SECONDS)
 
         except KeyboardInterrupt:
             self.logger.info("Agent stopped by user")
+
         except Exception as e:
             self.logger.error(
                 "Agent crashed",

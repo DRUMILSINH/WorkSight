@@ -1,10 +1,17 @@
 from django.contrib import admin
-from .models import AgentSession, ScreenshotLog
+from .models import (
+    AgentSession,
+    ScreenshotLog,
+    AgentHeartbeat,
+    Recording,
+    AgentToken,
+)
 
 
 @admin.register(AgentSession)
 class AgentSessionAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "agent_name",
         "agent_version",
         "hostname",
@@ -13,9 +20,37 @@ class AgentSessionAdmin(admin.ModelAdmin):
         "started_at",
     )
     search_fields = ("hostname", "username", "ip_address")
+    list_filter = ("agent_name", "started_at")
+    date_hierarchy = "started_at"
 
 
 @admin.register(ScreenshotLog)
 class ScreenshotLogAdmin(admin.ModelAdmin):
-    list_display = ("session", "captured_at", "image_path")
+    list_display = ("id", "session", "captured_at", "image_path")
     list_filter = ("captured_at",)
+    search_fields = ("image_path",)
+    date_hierarchy = "captured_at"
+
+
+@admin.register(AgentHeartbeat)
+class AgentHeartbeatAdmin(admin.ModelAdmin):
+    list_display = ("session", "last_seen")
+
+
+@admin.register(Recording)
+class RecordingAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "session",
+        "started_at",
+        "ended_at",
+        "drive_file_id",
+    )
+    list_filter = ("started_at",)
+    search_fields = ("video_path", "drive_file_id")
+
+
+@admin.register(AgentToken)
+class AgentTokenAdmin(admin.ModelAdmin):
+    list_display = ("session", "token")
+    search_fields = ("token",)
