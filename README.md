@@ -251,9 +251,9 @@ The agent will start capturing screenshots and sending data to the backend serve
 ├──────────────────────────────────┤
 │  Database Models:                │
 │  • Agent                         │
-│  • AgentHeartbeat               │
-│  • ScreenshotLog                │
-│  • Recording                    │
+│  • AgentHeartbeat                │
+│  • ScreenshotLog                 │
+│  • Recording                     │
 ├──────────────────────────────────┤
 │  Frontend:                       │
 │  • Dashboard (dashboard.html)    │
