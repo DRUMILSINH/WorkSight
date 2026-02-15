@@ -36,26 +36,32 @@ The system consists of:
 ```
 WorkSight/
 ├── agent/                          # Monitoring agent application
+│   ├── __init__.py                 # Package initialization
 │   ├── main.py                     # Entry point for the agent
 │   ├── config.py                   # Agent configuration
 │   ├── runtime.py                  # Main agent runtime
 │   ├── api_client.py               # API communication handler
 │   ├── logger.py                   # Logging configuration
 │   ├── system_info.py              # System information gathering
-│   ├── credentials/                # Credentials and keys (version controlled)
-│   │   └── credentials.json        # Google Drive credentials
 │   ├── cloud/                      # Cloud storage integration
+│   │   ├── __init__.py             # Package initialization
 │   │   ├── drive_client.py         # Google Drive client
 │   │   └── test_drive_upload.py    # Drive upload tests
+│   ├── credentials/                # Credentials and keys
+│   │   ├── credentials.json        # Google Drive credentials
+│   │   └── token.json              # OAuth token
 │   ├── recording/                  # Screen recording module
+│   │   ├── __init__.py             # Package initialization
 │   │   ├── screen_capture.py       # Screenshot capture
 │   │   ├── screen_recorder.py      # Video recording
 │   │   └── test_recording.py       # Recording tests
 │   ├── services/                   # Background services
+│   │   ├── __init__.py             # Package initialization
 │   │   ├── heartbeat_service.py    # Heartbeat manager
 │   │   ├── recording_service.py    # Recording scheduler
 │   │   └── screenshot_service.py   # Screenshot scheduler
 │   └── storage/                    # Local storage management
+│       ├── __init__.py             # Package initialization
 │       ├── base.py                 # Base storage class
 │       ├── local.py                # Local file storage
 │       ├── cleanup.py              # Storage cleanup utility
@@ -64,23 +70,36 @@ WorkSight/
 │       └── videos/                 # Recorded videos (generated)
 ├── server/                         # Django backend server
 │   ├── manage.py                   # Django management script
-│   ├── worksight_server/           # Django project settings
-│   │   ├── settings.py             # Django configuration
-│   │   ├── urls.py                 # URL routing
-│   │   ├── asgi.py                 # ASGI configuration
-│   │   └── wsgi.py                 # WSGI configuration
-│   └── monitoring/                 # Monitoring app
-│       ├── models.py               # Database models
-│       ├── views.py                # API views
-│       ├── urls.py                 # App URL routing
-│       ├── admin.py                # Django admin configuration
-│       ├── migrations/             # Database migrations
-│       └── templates/
-│           └── monitoring/
-│               └── dashboard.html  # Web dashboard
-├── docs/                           # Documentation
+│   ├── monitoring/                 # Monitoring Django app
+│   │   ├── admin.py                # Django admin configuration
+│   │   ├── models.py               # Database models
+│   │   ├── urls.py                 # App URL routing
+│   │   ├── views.py                # API views
+│   │   ├── migrations/             # Database migrations
+│   │   │   ├── __init__.py         # Package initialization
+│   │   │   ├── 0001_initial.py     # Initial migration
+│   │   │   ├── 0002_agentheartbeat_recording.py  # Heartbeat & recording migration
+│   │   │   └── 0003_alter_screenshotlog_captured_at_agenttoken.py  # Schema update migration
+│   │   └── templates/              # HTML templates
+│   │       ├── base.html           # Base template
+│   │       └── monitoring/
+│   │           └── dashboard.html  # Web dashboard
+│   ├── server/                     # Duplicate server folder (legacy structure)
+│   │   ├── manage.py               # Legacy management script
+│   │   └── worksight_server/       # Legacy project settings
+│   │       ├── __init__.py
+│   │       ├── asgi.py
+│   │       ├── settings.py
+│   │       ├── urls.py
+│   │       └── wsgi.py
+│   └── worksight_server/           # Django project settings
+│       ├── __init__.py             # Package initialization
+│       ├── settings.py             # Django configuration
+│       ├── urls.py                 # URL routing
+│       ├── asgi.py                 # ASGI configuration
+│       └── wsgi.py                 # WSGI configuration
+├── docs/                           # Documentation folder
 ├── requirements.txt                # Python dependencies
-├── .gitignore                      # Git ignore rules
 └── README.md                       # This file
 ```
 
