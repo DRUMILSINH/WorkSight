@@ -1,4 +1,6 @@
 import time
+import socket  
+import logging
 
 from agent.api_client import BackendClient
 from agent.logger import get_logger
@@ -20,25 +22,37 @@ from agent.services.recording_service import RecordingService
 class WorkSightAgent:
     def __init__(self):
         self.logger = get_logger(LOG_DIR, LOG_FILE_NAME, LOG_LEVEL)
+        
+        # 1. Identity: Capture hostname here (The Runtime owns identity)
+        self.hostname = socket.gethostname()
+        
         self.system_info = collect_system_info()
         self.backend = BackendClient(self.logger)
 
         self.screenshot_service = ScreenshotService(self.backend, self.logger)
         self.heartbeat_service = HeartbeatService(self.backend)
-        self.recording_service = RecordingService(self.backend, self.logger)
+        
+        # 2. Injection: Pass the hostname to the recording service
+        self.recording_service = RecordingService(
+            backend=self.backend, 
+            logger=self.logger, 
+            hostname=self.hostname  # <--- PASSING IT HERE
+        )
 
     def start(self):
         self.logger.info(
-            "Agent started",
+            f"Agent started on {self.hostname}",
             extra={
                 "metadata": {
                     "agent": AGENT_NAME,
                     "version": AGENT_VERSION,
+                    "hostname": self.hostname,
                     **self.system_info,
                 }
             },
         )
 
+        # Register the session
         self.backend.create_session(self.system_info)
 
         try:
