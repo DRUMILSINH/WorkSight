@@ -1,4 +1,8 @@
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+import pymysql
+pymysql.install_as_MySQLdb()
 
 # =========================
 # Base Directory
@@ -9,12 +13,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # =========================
 # Security (DEV MODE)
 # =========================
-SECRET_KEY = 'django-insecure-CHANGE-THIS-LATER'
 
-DEBUG = True
+load_dotenv()
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+DEBUG = os.getenv("DEBUG") == "True"
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-
 
 # =========================
 # Installed Applications
@@ -73,14 +78,15 @@ WSGI_APPLICATION = 'worksight_server.wsgi.application'
 # =========================
 # Database (MySQL)
 # =========================
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'worksight_db',
-        'USER': 'worksight_user',
-        'PASSWORD': 'strongpassword',  # change if needed
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.getenv("DB_NAME", "worksight_db"),
+        'USER': os.getenv("DB_USER", "worksight_user"),
+        'PASSWORD': os.getenv("DB_PASSWORD", "strongpassword"),
+        'HOST': os.getenv("DB_HOST", "127.0.0.1"),
+        'PORT': os.getenv("DB_PORT", "3306"),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },

@@ -3,7 +3,6 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-# Ensure these imports match your actual project structure
 from agent.recording.screen_recorder import record_screen
 from agent.cloud.drive_client import DriveClient
 from agent.config import (
@@ -12,39 +11,33 @@ from agent.config import (
     RECORDING_DURATION_SECONDS,
 )
 
+
 class RecordingService:
-    def __init__(self, backend, logger, hostname):  # <--- ACCEPT HOSTNAME
+    def __init__(self, backend, logger, hostname):
         self.backend = backend
         self.logger = logger
-        self.hostname = hostname  # <--- STORE IT
-        
-        # Initialize state variables
+        self.hostname = hostname
+
         self.is_recording = False
         self.last_recording_time = 0
 
-        # Initialize Drive Client with logger
-        self.drive = DriveClient(logger=self.logger) 
-        
-        # Define folder name using the injected hostname
-        # Example: "Session_DESKTOP-123_2026-02-13"
+        self.drive = DriveClient(logger=self.logger)
+
         date_str = datetime.now().strftime('%Y-%m-%d')
         self.session_folder = f"Session_{self.hostname}_{date_str}"
 
     def maybe_record(self):
-        """Checks if it's time to record, and if so, starts a background thread."""
+        """Checks if recording interval has passed and starts background job."""
         now = time.time()
 
         if self.is_recording:
             return
 
-        # Check if enough time has passed
         if now - self.last_recording_time < RECORDING_INTERVAL_SECONDS:
             return
 
-        self.last_recording_time = now
         self.is_recording = True
 
-        # Start recording in a separate thread
         thread = threading.Thread(
             target=self._record_and_upload,
             args=(now,),
@@ -53,45 +46,46 @@ class RecordingService:
         thread.start()
 
     def _record_and_upload(self, timestamp):
-        """Worker function that runs in a background thread."""
-        try:
-            self.logger.info(f"Starting screen recording task for {self.hostname}...")
+        video_path = None
 
-            recording_start = datetime.utcnow()
+        try:
+            self.logger.info("Recording started")
+
             video_filename = f"recording_{int(timestamp)}.mp4"
             video_path = VIDEO_DIR / video_filename
 
-            # A. Record the screen
             record_screen(
                 video_path,
                 duration_seconds=RECORDING_DURATION_SECONDS,
             )
 
-            # B. Upload to Google Drive
+            if not video_path.exists() or video_path.stat().st_size == 0:
+                raise Exception("Recorded file invalid or empty")
+
             drive_file_id = self.drive.upload_file(
-                video_path, 
-                subfolder_name=self.session_folder
+                video_path,
+                subfolder_name=self.session_folder,
             )
 
-            if not drive_file_id:
-                raise Exception("Drive upload returned no File ID")
-
-            # C. Notify Backend
-            self.backend.log_recording({
+            payload = {
                 "video_path": str(video_path),
                 "drive_file_id": drive_file_id,
-                "started_at": recording_start.isoformat(),
+                "started_at": datetime.utcnow().isoformat(),
                 "ended_at": datetime.utcnow().isoformat(),
-            })
+            }
+
+            self.backend.log_recording(payload)
 
             self.logger.info(
-                f"Recording uploaded successfully to folder '{self.session_folder}'",
+                "Recording complete",
                 extra={"metadata": {"drive_file_id": drive_file_id}},
             )
 
+            self.last_recording_time = time.time()
+
         except Exception as e:
             self.logger.error(
-                "Recording cycle failed",
+                "Recording failed",
                 extra={"metadata": {"error": str(e)}},
             )
 

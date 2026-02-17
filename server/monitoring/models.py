@@ -40,19 +40,45 @@ class AgentHeartbeat(models.Model):
         return f"Heartbeat @ {self.last_seen}"
 
 class Recording(models.Model):
+
+    STATUS_CHOICES = [
+        ('CREATED', 'Created'),
+        ('RECORDED', 'Recorded'),
+        ('UPLOADING', 'Uploading'),
+        ('UPLOADED', 'Uploaded'),
+        ('FAILED', 'Failed'),
+    ]
+
     session = models.ForeignKey(
         AgentSession,
         on_delete=models.CASCADE,
         related_name="recordings"
     )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='CREATED'
+    )
+
     video_path = models.CharField(max_length=512)
     drive_file_id = models.CharField(max_length=256, blank=True, null=True)
+
+    retry_count = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True, null=True)
+
+    file_size_bytes = models.BigIntegerField(null=True, blank=True)
+
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
+
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    ai_processed = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Recording {self.id} ({self.session_id})"
+        return f"Recording {self.id} - {self.status}"
     
 class AgentToken(models.Model):
     session = models.OneToOneField(
@@ -61,4 +87,5 @@ class AgentToken(models.Model):
         related_name="token"
     )
     token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 

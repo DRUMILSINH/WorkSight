@@ -53,8 +53,12 @@ class WorkSightAgent:
         )
 
         # Register the session
-        self.backend.create_session(self.system_info)
+        session_payload = {
+            "hostname": self.hostname,
+            **self.system_info,
+        }
 
+        self.backend.create_session(session_payload)
         try:
             while True:
                 self.heartbeat_service.tick()

@@ -5,14 +5,20 @@ from agent.config import (
     SESSION_ENDPOINT,
     SCREENSHOT_ENDPOINT,
     REQUEST_TIMEOUT_SECONDS,
-    AGENT_NAME, 
+    AGENT_NAME,
     AGENT_VERSION,
 )
+
 
 class BackendClient:
     def __init__(self, logger):
         self.logger = logger
         self.session_id = None
+        self.token = None
+
+    # ==============================
+    # SESSION
+    # ==============================
 
     def create_session(self, system_info):
         payload = {
@@ -30,17 +36,43 @@ class BackendClient:
         )
 
         response.raise_for_status()
-        self.session_id = response.json()["session_id"]
+
+        data = response.json()
+        self.session_id = data["session_id"]
+        self.token = data["token"]
+
         return self.session_id
+
+    # ==============================
+    # AUTH HEADER
+    # ==============================
+
+    def _auth_headers(self):
+        if not self.token:
+            return {}
+        return {
+            "Authorization": f"Bearer {self.token}"
+        }
+
+    # ==============================
+    # HEARTBEAT
+    # ==============================
 
     def send_heartbeat(self):
         if not self.session_id:
             return
 
-        requests.post(
+        response = requests.post(
             f"{SESSION_ENDPOINT}{self.session_id}/heartbeat/",
+            headers=self._auth_headers(),
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
+
+        response.raise_for_status()
+
+    # ==============================
+    # SCREENSHOT
+    # ==============================
 
     def log_screenshot(self, image_path):
         if not self.session_id:
@@ -52,15 +84,27 @@ class BackendClient:
             "captured_at": datetime.utcnow().isoformat(),
         }
 
-        requests.post(
+        response = requests.post(
             SCREENSHOT_ENDPOINT,
             json=payload,
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
 
+        response.raise_for_status()
+
+    # ==============================
+    # RECORDING
+    # ==============================
+
     def log_recording(self, payload):
-        requests.post(
+        if not self.session_id:
+            return
+
+        response = requests.post(
             f"{SESSION_ENDPOINT}{self.session_id}/recordings/",
             json=payload,
+            headers=self._auth_headers(),
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
+
+        response.raise_for_status()

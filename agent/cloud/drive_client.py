@@ -1,18 +1,15 @@
 """
-DriveClient (Standard Version)
-------------------------------
-Handles Google Drive authentication using native PyDrive2 settings.
+DriveClient (Production Version)
+---------------------------------
+Non-interactive Google Drive client.
+Requires token.json generated beforehand.
 """
 
 from pathlib import Path
 from typing import Optional
-import logging
 from pydrive2.auth import GoogleAuth, RefreshError
 from pydrive2.drive import GoogleDrive
 
-# -----------------------------
-# Configuration Paths
-# -----------------------------
 
 CREDENTIALS_DIR = Path("agent/credentials")
 CLIENT_SECRET_FILE = CREDENTIALS_DIR / "credentials.json"
@@ -26,8 +23,7 @@ class DriveClient:
 
         try:
             self._authenticate()
-            if self.drive:
-                self.logger.info("Drive client initialized successfully.")
+            self.logger.info("Drive client initialized successfully.")
         except Exception as e:
             self.logger.error(
                 "Drive initialization failed.",
@@ -39,42 +35,31 @@ class DriveClient:
         if not CLIENT_SECRET_FILE.exists():
             raise FileNotFoundError(f"Missing credentials.json at {CLIENT_SECRET_FILE}")
 
+        if not TOKEN_FILE.exists():
+            raise Exception(
+                "token.json missing. Run setup_drive_auth.py once before starting agent."
+            )
+
         gauth = GoogleAuth()
-        
-        # 1. CRITICAL: Configure settings to force Offline Access (Refresh Token)
-        # This tells PyDrive2 to handle the "force" consent automatically.
-        gauth.settings["get_refresh_token"] = True
         gauth.settings["client_config_file"] = str(CLIENT_SECRET_FILE)
 
-        # 2. Load saved token if it exists
-        if TOKEN_FILE.exists():
-            gauth.LoadCredentialsFile(str(TOKEN_FILE))
+        # Load saved token
+        gauth.LoadCredentialsFile(str(TOKEN_FILE))
 
-        # 3. Auth Logic
         if gauth.credentials is None:
-            # Case A: First Run
-            self.logger.info("Performing first-time Drive authentication...")
-            # We call this with NO arguments. The settings above control the flow.
-            gauth.LocalWebserverAuth()
+            raise Exception("Invalid token.json. Re-run setup_drive_auth.py")
 
-        elif gauth.access_token_expired:
-            # Case B: Expired Token
+        # Silent refresh if needed
+        if gauth.access_token_expired:
             try:
+                self.logger.info("Refreshing Drive token...")
                 gauth.Refresh()
             except RefreshError:
-                # Case C: Refresh Failed (Token Revoked)
-                self.logger.warning("Refresh failed. Re-authenticating...")
-                if TOKEN_FILE.exists():
-                    TOKEN_FILE.unlink() # Delete bad token
-                
-                # Re-trigger login
-                gauth.LocalWebserverAuth()
-        else:
-            # Case D: Valid Token
-            gauth.Authorize()
+                raise Exception("Token refresh failed. Re-run setup_drive_auth.py")
 
-        # 4. Save the valid credentials
+        gauth.Authorize()
         gauth.SaveCredentialsFile(str(TOKEN_FILE))
+
         self.drive = GoogleDrive(gauth)
 
     def upload_file(self, file_path: Path, subfolder_name: Optional[str] = None) -> Optional[str]:
@@ -98,13 +83,14 @@ class DriveClient:
             drive_file = self.drive.CreateFile(metadata)
             drive_file.SetContentFile(str(file_path))
             drive_file.Upload()
-            
+
             file_id = drive_file["id"]
-            
+
             self.logger.info(
-                f"Uploaded {file_path.name} to Drive.",
+                "Drive upload successful",
                 extra={"metadata": {"drive_file_id": file_id}},
             )
+
             return file_id
 
         except Exception as e:
@@ -115,18 +101,22 @@ class DriveClient:
             return None
 
     def _get_or_create_folder(self, folder_name: str) -> str:
-        # Check if folder exists
-        query = f"title='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        query = (
+            f"title='{folder_name}' "
+            "and mimeType='application/vnd.google-apps.folder' "
+            "and trashed=false"
+        )
+
         file_list = self.drive.ListFile({"q": query}).GetList()
-        
+
         if file_list:
             return file_list[0]["id"]
 
-        # Create folder if missing
         folder_metadata = {
             "title": folder_name,
             "mimeType": "application/vnd.google-apps.folder",
         }
+
         folder = self.drive.CreateFile(folder_metadata)
         folder.Upload()
         return folder["id"]

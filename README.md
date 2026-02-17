@@ -105,9 +105,9 @@ WorkSight/
 
 ## Prerequisites
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - pip (Python package manager)
-- MySQL Server (for database)
+- MySQL Server (for database) or another supported DB
 - Google Cloud credentials (for Google Drive integration)
 - ffmpeg (for video encoding, optional)
 
@@ -121,16 +121,18 @@ cd WorkSight
 
 ### 2. Create Virtual Environment
 
+We recommend creating an isolated virtual environment named `.venv`.
+
 **On Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
 **On macOS/Linux:**
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 ### 3. Install Dependencies
@@ -215,6 +217,17 @@ python manage.py runserver 0.0.0.0:8000
 ```
 
 The server will be available at `http://localhost:8000`
+
+### Docker (Quick)
+
+If you prefer containerized deployment, an example `docker-compose.yml` is provided in the `server/` folder. To run the server with Docker Compose:
+
+```bash
+cd server
+docker-compose up --build
+```
+
+This starts the backend and any services defined in the compose file.
 
 ### 2. Start the Monitoring Agent
 
@@ -395,6 +408,12 @@ Then update `BACKEND_BASE_URL` in `agent/config.py`.
 ## License
 
 This project is proprietary. All rights reserved.
+
+## Security
+
+- Do not commit secrets or credentials to the repository. The repository `.gitignore` excludes `agent/credentials/*.json` and other secret files.
+- Use a `.env` file for environment variables and keep it out of version control. Consider storing sensitive credentials in a secure secrets manager for production.
+- If you need to provide example credentials or configuration, add files with a `.example` suffix (for example: `agent/credentials/credentials.json.example`).
 
 ---
 

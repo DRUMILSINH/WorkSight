@@ -1,128 +1,97 @@
-# ==========================================
-# Python & Package Management
-# ==========================================
+# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
+
+# C extensions
+*.pyd
+
+# Distribution / packaging
 build/
-develop-eggs/
 dist/
-downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+*.egg-info/
+*.egg
 pip-wheel-metadata/
 share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 MANIFEST
 
-# ==========================================
-# Virtual Environments
-# ==========================================
+# Virtual environments
 venv/
 env/
+.venv/
 ENV/
 env.bak/
 venv.bak/
-.venv/
 
-# ==========================================
-# IDE, Editor & OS
-# ==========================================
+# Editor directories and OS metadata
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
 .project
 .pydevproject
 .settings/
 *.sublime-project
 *.sublime-workspace
-Thumbs.db
-*.lnk
 
-# ==========================================
-# Environment Variables & Secrets
-# ==========================================
+# Environment variables and secrets
 .env
-.env.local
-.env.*.local
+.env.*
 
-# ==========================================
-# Database Files
-# ==========================================
-*.db
-*.sqlite
-*.sqlite3
-db.sqlite3
-
-# ==========================================
-# Project-Specific: Storage Directories
-# ==========================================
-# Ignore generated storage content but keep folder structure
-agent/storage/logs/*
-agent/storage/screenshots/*
-agent/storage/videos/*
-!agent/storage/logs/.gitkeep
-!agent/storage/screenshots/.gitkeep
-!agent/storage/videos/.gitkeep
-# Google OAuth credentials
-agent/credentials/token.json
-agent/credentials/credentials.json
-
-# ==========================================
-# Keep Version-Controlled Folders
-# ==========================================
-# Ensure credentials folder is tracked
-!agent/credentials/*
-
-# ==========================================
-# Django
-# ==========================================
-staticfiles/
-media/
-local_settings.py
-/server/db.sqlite3
-
-# ==========================================
-# Testing & Coverage
-# ==========================================
+# Python testing / reporting
 .pytest_cache/
 .coverage
 .coverage.*
 htmlcov/
 .tox/
 .hypothesis/
+.mypy_cache/
 
-# ==========================================
 # Logs
-# ==========================================
 logs/
 *.log
 *.json
 
-# ==========================================
-# Temporary & Backup Files
-# ==========================================
+# Temporary & backup files
 *.tmp
 *.bak
-.#*
 *.orig
 
-# ==========================================
-# Node.js (if used for frontend)
-# ==========================================
+# Node
 node_modules/
 package-lock.json
 yarn.lock
+
+# Project-specific: generated storage content
+# Keep folders but ignore generated files; add .gitkeep to retain empty dirs
+agent/storage/logs/*
+agent/storage/screenshots/*
+agent/storage/videos/*
+!agent/storage/logs/.gitkeep
+!agent/storage/screenshots/.gitkeep
+!agent/storage/videos/.gitkeep
+
+# Credentials and tokens (do NOT commit secrets). Use example/template files instead.
+agent/credentials/*.json
+agent/credentials/*.token
+agent/credentials/*token*
+
+# If you want to track a credentials template, add it as e.g. agent/credentials/credentials.json.example
+
+# Django / server
+/server/staticfiles/
+/server/media/
+/server/local_settings.py
+/server/db.sqlite3
+
+# Misc
+.ropeproject/
+.cache/
+
