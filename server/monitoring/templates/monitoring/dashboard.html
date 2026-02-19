@@ -23,6 +23,22 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-warning">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">AI Metrics</h6>
+                <h3 class="mb-0">{{ ai_total }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-danger">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Critical Anomalies</h6>
+                <h3 class="mb-0">{{ ai_critical }}</h3>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card shadow-sm mb-4">
@@ -59,8 +75,8 @@
                     <td><span class="fw-bold text-dark">{{ log.session.username }}</span></td>
                     <td><span class="badge bg-secondary">{{ log.session.ip_address }}</span></td>
                     <td>
-                        {% if log.image_path %}
-                            <a href="/media/{{ log.image_path }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        {% if log.image %}
+                            <a href="{{ log.image.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-image"></i> View
                             </a>
                         {% else %}
@@ -92,6 +108,40 @@
                 {% endif %}
             </ul>
         </nav>
+    </div>
+</div>
+
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 text-secondary">Latest AI Metrics</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Productivity</th>
+                    <th>Anomaly</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for metric in latest_ai_metrics %}
+                <tr>
+                    <td>{{ metric.agent_timestamp|date:"Y-m-d H:i:s" }}</td>
+                    <td><span class="fw-bold text-dark">{{ metric.session.username }}</span></td>
+                    <td>{{ metric.productivity_score }}</td>
+                    <td>{{ metric.anomaly_label }} ({{ metric.anomaly_score }})</td>
+                    <td>{{ metric.pipeline_status }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">No AI metrics yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}

@@ -1,6 +1,6 @@
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from agent.recording.screen_recorder import record_screen
@@ -50,6 +50,7 @@ class RecordingService:
 
         try:
             self.logger.info("Recording started")
+            started_at = datetime.now(timezone.utc).isoformat()
 
             video_filename = f"recording_{int(timestamp)}.mp4"
             video_path = VIDEO_DIR / video_filename
@@ -58,6 +59,7 @@ class RecordingService:
                 video_path,
                 duration_seconds=RECORDING_DURATION_SECONDS,
             )
+            ended_at = datetime.now(timezone.utc).isoformat()
 
             if not video_path.exists() or video_path.stat().st_size == 0:
                 raise Exception("Recorded file invalid or empty")
@@ -70,8 +72,10 @@ class RecordingService:
             payload = {
                 "video_path": str(video_path),
                 "drive_file_id": drive_file_id,
-                "started_at": datetime.utcnow().isoformat(),
-                "ended_at": datetime.utcnow().isoformat(),
+                "started_at": started_at,
+                "ended_at": ended_at,
+                "file_size_bytes": video_path.stat().st_size,
+                "status": "UPLOADED",
             }
 
             self.backend.log_recording(payload)

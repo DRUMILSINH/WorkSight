@@ -1,421 +1,331 @@
-# WorkSight
+﻿# WorkSight
 
-WorkSight is a comprehensive employee activity monitoring and productivity management system. It consists of two main components: a **monitoring agent** that runs on employee machines to capture activity data, and a **Django-based backend server** for processing, storing, and visualizing that data.
+### Edge-AI Powered Monitoring System (Distributed Architecture Demo)
 
-## Table of Contents
+WorkSight is a **distributed, edge-AI monitoring platform** designed to simulate production-grade telemetry ingestion, on-device AI processing, and idempotent backend architecture.
 
-- [Overview](#overview)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Running the Application](#running-the-application)
-- [Architecture](#architecture)
-- [Key Features](#key-features)
-- [API Endpoints](#api-endpoints)
-- [Database](#database)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+It demonstrates how to design:
 
-## Overview
+* Edge inference pipelines
+* Durable local queuing
+* Idempotent API ingestion
+* Token-bound session security
+* Dockerized backend deployment
+* Additive backend evolution without refactors
 
-WorkSight enables organizations to:
-- Monitor employee activities on monitored machines
-- Capture periodic screenshots and recordings
-- Track heartbeats and system information
-- Upload data to cloud storage
-- Analyze productivity trends through a web dashboard
-
-The system consists of:
-- **Agent**: A lightweight Python application that runs on monitored machines
-- **Server**: A Django-based REST API and web dashboard for data management and visualization
-
-## Project Structure
-
-```
-WorkSight/
-├── agent/                          # Monitoring agent application
-│   ├── __init__.py                 # Package initialization
-│   ├── main.py                     # Entry point for the agent
-│   ├── config.py                   # Agent configuration
-│   ├── runtime.py                  # Main agent runtime
-│   ├── api_client.py               # API communication handler
-│   ├── logger.py                   # Logging configuration
-│   ├── system_info.py              # System information gathering
-│   ├── cloud/                      # Cloud storage integration
-│   │   ├── __init__.py             # Package initialization
-│   │   ├── drive_client.py         # Google Drive client
-│   │   └── test_drive_upload.py    # Drive upload tests
-│   ├── credentials/                # Credentials and keys
-│   │   ├── credentials.json        # Google Drive credentials
-│   │   └── token.json              # OAuth token
-│   ├── recording/                  # Screen recording module
-│   │   ├── __init__.py             # Package initialization
-│   │   ├── screen_capture.py       # Screenshot capture
-│   │   ├── screen_recorder.py      # Video recording
-│   │   └── test_recording.py       # Recording tests
-│   ├── services/                   # Background services
-│   │   ├── __init__.py             # Package initialization
-│   │   ├── heartbeat_service.py    # Heartbeat manager
-│   │   ├── recording_service.py    # Recording scheduler
-│   │   └── screenshot_service.py   # Screenshot scheduler
-│   └── storage/                    # Local storage management
-│       ├── __init__.py             # Package initialization
-│       ├── base.py                 # Base storage class
-│       ├── local.py                # Local file storage
-│       ├── cleanup.py              # Storage cleanup utility
-│       ├── logs/                   # Agent logs (generated)
-│       ├── screenshots/            # Captured screenshots (generated)
-│       └── videos/                 # Recorded videos (generated)
-├── server/                         # Django backend server
-│   ├── manage.py                   # Django management script
-│   ├── monitoring/                 # Monitoring Django app
-│   │   ├── admin.py                # Django admin configuration
-│   │   ├── models.py               # Database models
-│   │   ├── urls.py                 # App URL routing
-│   │   ├── views.py                # API views
-│   │   ├── migrations/             # Database migrations
-│   │   │   ├── __init__.py         # Package initialization
-│   │   │   ├── 0001_initial.py     # Initial migration
-│   │   │   ├── 0002_agentheartbeat_recording.py  # Heartbeat & recording migration
-│   │   │   └── 0003_alter_screenshotlog_captured_at_agenttoken.py  # Schema update migration
-│   │   └── templates/              # HTML templates
-│   │       ├── base.html           # Base template
-│   │       └── monitoring/
-│   │           └── dashboard.html  # Web dashboard
-│   ├── server/                     # Duplicate server folder (legacy structure)
-│   │   ├── manage.py               # Legacy management script
-│   │   └── worksight_server/       # Legacy project settings
-│   │       ├── __init__.py
-│   │       ├── asgi.py
-│   │       ├── settings.py
-│   │       ├── urls.py
-│   │       └── wsgi.py
-│   └── worksight_server/           # Django project settings
-│       ├── __init__.py             # Package initialization
-│       ├── settings.py             # Django configuration
-│       ├── urls.py                 # URL routing
-│       ├── asgi.py                 # ASGI configuration
-│       └── wsgi.py                 # WSGI configuration
-├── docs/                           # Documentation folder
-├── requirements.txt                # Python dependencies
-└── README.md                       # This file
-```
-
-## Prerequisites
-
-- Python 3.10 or higher
-- pip (Python package manager)
-- MySQL Server (for database) or another supported DB
-- Google Cloud credentials (for Google Drive integration)
-- ffmpeg (for video encoding, optional)
-
-## Installation
-
-### 1. Clone and Navigate to Project
-
-```bash
-cd WorkSight
-```
-
-### 2. Create Virtual Environment
-
-We recommend creating an isolated virtual environment named `.venv`.
-
-**On Windows:**
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-**On macOS/Linux:**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Set Up Environment Variables
-
-Create a `.env` file in the project root:
-
-```bash
-# Django Configuration
-DJANGO_SECRET_KEY=your-secret-key-here
-DJANGO_DEBUG=True
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database Configuration
-DB_ENGINE=django.db.backends.mysql
-DB_NAME=worksight_db
-DB_USER=root
-DB_PASSWORD=your_db_password
-DB_HOST=127.0.0.1
-DB_PORT=3306
-
-# Agent Configuration
-AGENT_NAME=WorkSight-Agent
-AGENT_VERSION=0.1.0
-BACKEND_BASE_URL=http://127.0.0.1:8000/api
-
-# Cloud Storage (Google Drive)
-GOOGLE_DRIVE_CREDENTIALS_PATH=agent/credentials/credentials.json
-```
-
-### 5. Database Setup
-
-```bash
-# Navigate to server directory
-cd server
-
-# Apply migrations
-python manage.py migrate
-
-# Create superuser for admin panel
-python manage.py createsuperuser
-
-# Collect static files
-python manage.py collectstatic --noinput
-```
-
-## Configuration
-
-### Agent Configuration
-
-Edit `agent/config.py` to customize:
-
-```python
-SCREENSHOT_INTERVAL_SECONDS = 10      # Screenshot capture frequency
-SCREENSHOT_FORMAT = "png"              # Image format
-LOG_LEVEL = "INFO"                     # Logging level
-BACKEND_BASE_URL = "http://127.0.0.1:8000/api"
-```
-
-### Server Configuration
-
-Edit `server/worksight_server/settings.py` to customize:
-
-```python
-DEBUG = True                           # Set to False in production
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-INSTALLED_APPS = [...]                # Add/remove apps as needed
-```
-
-## Running the Application
-
-### 1. Start the Django Server
-
-```bash
-cd server
-python manage.py runserver 0.0.0.0:8000
-```
-
-The server will be available at `http://localhost:8000`
-
-### Docker (Quick)
-
-If you prefer containerized deployment, an example `docker-compose.yml` is provided in the `server/` folder. To run the server with Docker Compose:
-
-```bash
-cd server
-docker-compose up --build
-```
-
-This starts the backend and any services defined in the compose file.
-
-### 2. Start the Monitoring Agent
-
-In a new terminal, with the virtual environment activated:
-
-```bash
-cd agent
-python main.py
-```
-
-The agent will start capturing screenshots and sending data to the backend server.
-
-### 3. Access the Dashboard
-
-- **Admin Panel**: `http://localhost:8000/admin/`
-- **Monitoring Dashboard**: `http://localhost:8000/monitoring/dashboard/`
-
-## Architecture
-
-### Agent Architecture
-
-```
-┌─────────────────────────────────────┐
-│    WorkSightAgent (main.py)         │
-├─────────────────────────────────────┤
-│  Services:                          │
-│  • HeartbeatService                 │
-│  • ScreenshotService                │
-│  • RecordingService                 │
-├─────────────────────────────────────┤
-│  Modules:                           │
-│  • ScreenCapture                    │
-│  • ScreenRecorder                   │
-│  • DriveClient                      │
-│  • APIClient                        │
-├─────────────────────────────────────┤
-│  Storage:                           │
-│  • Local Storage (screenshots/logs) │
-│  • Cloud Storage (Google Drive)     │
-└─────────────────────────────────────┘
-```
-
-### Server Architecture
-
-```
-┌──────────────────────────────────┐
-│    Django REST API               │
-├──────────────────────────────────┤
-│  • ScreenshotLog endpoints       │
-│  • AgentHeartbeat endpoints      │
-│  • AgentToken endpoints          │
-│  • Recording endpoints           │
-├──────────────────────────────────┤
-│  Database Models:                │
-│  • Agent                         │
-│  • AgentHeartbeat                │
-│  • ScreenshotLog                 │
-│  • Recording                     │
-├──────────────────────────────────┤
-│  Frontend:                       │
-│  • Dashboard (dashboard.html)    │
-└──────────────────────────────────┘
-```
-
-## Key Features
-
-### Agent Features
-
-- **Screenshot Capture**: Automatic periodic screenshot capture
-- **Video Recording**: Screen recording with configurable intervals
-- **Heartbeat Monitoring**: Periodic heartbeat signals to server
-- **System Information**: Collects system metadata
-- **Cloud Integration**: Automatic upload to Google Drive
-- **Logging**: Comprehensive agent activity logging
-- **Credential Management**: Secure credential handling
-
-### Server Features
-
-- **REST API**: Full-featured API for data ingestion and retrieval
-- **Database Models**: Django ORM models for agents, heartbeats, and recordings
-- **Admin Interface**: Django admin for data management
-- **Dashboard**: Web-based monitoring dashboard
-- **User Authentication**: Agent token-based authentication
-- **Data Aggregation**: Heartbeat and screenshot log aggregation
-
-## API Endpoints
-
-### Screenshots
-
-- `GET /api/screenshots/` - List all screenshots
-- `POST /api/screenshots/` - Create new screenshot record
-- `GET /api/screenshots/{id}/` - Get screenshot details
-- `DELETE /api/screenshots/{id}/` - Delete screenshot
-
-### Heartbeats
-
-- `GET /api/heartbeats/` - List all heartbeats
-- `POST /api/heartbeats/` - Create new heartbeat
-- `GET /api/heartbeats/{id}/` - Get heartbeat details
-
-### Agents
-
-- `GET /api/agents/` - List all agents
-- `POST /api/agents/` - Register new agent
-- `GET /api/agents/{id}/` - Get agent details
-
-### Recordings
-
-- `GET /api/recordings/` - List all recordings
-- `POST /api/recordings/` - Create new recording
-- `GET /api/recordings/{id}/` - Get recording details
-
-## Database
-
-The project uses MySQL as the default database. Key models include:
-
-### Agent Model
-- Stores agent information and metadata
-- Links to heartbeats and screenshot logs
-
-### AgentHeartbeat Model
-- Periodic heartbeat from agents
-- Includes timestamp and system status
-- Links to parent agent
-
-### ScreenshotLog Model
-- Records screenshot metadata
-- Includes capture timestamp and file path
-- Links to agent
-
-### Recording Model
-- Stores video recording information
-- Includes start/end times and file path
-
-## Troubleshooting
-
-### Agent Won't Connect to Server
-
-1. Verify server is running: `http://localhost:8000/api/sessions/`
-2. Check `BACKEND_BASE_URL` in `agent/config.py`
-3. Review agent logs in `agent/storage/logs/`
-
-### Database Connection Error
-
-1. Verify MySQL is running
-2. Check database credentials in `.env`
-3. Run migrations: `python manage.py migrate`
-
-### Google Drive Upload Fails
-
-1. Verify `credentials.json` exists in `agent/credentials/`
-2. Check Google Drive API is enabled in Google Cloud Console
-3. Review drive upload logs in `agent/storage/logs/`
-
-### Screenshot Capture Issues
-
-1. Check disk space in `agent/storage/screenshots/`
-2. Verify file permissions
-3. Review screenshot service logs
-
-### Port Already in Use
-
-If port 8000 is in use, start the server on a different port:
-
-```bash
-python manage.py runserver 8001
-```
-
-Then update `BACKEND_BASE_URL` in `agent/config.py`.
-
-## Contributing
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make your changes and commit: `git commit -m 'Add your feature'`
-3. Push to the branch: `git push origin feature/your-feature`
-4. Submit a pull request
-
-## License
-
-This project is proprietary. All rights reserved.
-
-## Security
-
-- Do not commit secrets or credentials to the repository. The repository `.gitignore` excludes `agent/credentials/*.json` and other secret files.
-- Use a `.env` file for environment variables and keep it out of version control. Consider storing sensitive credentials in a secure secrets manager for production.
-- If you need to provide example credentials or configuration, add files with a `.example` suffix (for example: `agent/credentials/credentials.json.example`).
+This project focuses on **architecture and system reliability**, not just feature implementation.
 
 ---
 
-**Last Updated**: February 2026  
-**Version**: 0.1.0
+## What This Project Demonstrates
+
+* Running AI workloads on edge nodes instead of centralized servers
+* Isolating workers to prevent main-loop blocking
+* Designing retry-safe, idempotent ingestion APIs
+* Handling partial failures gracefully
+* Maintaining backward compatibility during feature expansion
+* Production-like deployment using Docker + Gunicorn + MySQL
+
+---
+
+# System Architecture
+
+## High-Level Design
+
+```
+            ┌──────────────────────────────┐
+            │           Agent              │
+            │──────────────────────────────│
+            │ Capture Worker               │
+            │ AI Worker (OCR + Scoring)    │
+            │ Upload Worker                │
+            │ Durable SQLite Queue         │
+            │ Health Snapshot Monitor      │
+            └───────────────┬──────────────┘
+                            │
+                            ▼
+            ┌──────────────────────────────┐
+            │        Django Backend        │
+            │──────────────────────────────│
+            │ Session Management API       │
+            │ Screenshot Ingestion         │
+            │ Recording Metadata           │
+            │ AI Metrics Endpoint          │
+            │ Idempotency Enforcement      │
+            └───────────────┬──────────────┘
+                            │
+                            ▼
+                        MySQL 8
+```
+
+---
+
+# Edge AI Pipeline
+
+All AI computation runs **on the agent**.
+
+### Pipeline Flow
+
+1. Screenshot captured
+2. OCR extraction (resilient, optional)
+3. Feature extraction
+4. Productivity scoring (0-100)
+5. Anomaly scoring (0-1)
+6. Local queue persistence
+7. Upload with `X-Idempotency-Key`
+
+### Design Decisions
+
+* No raw OCR text required on server
+* Structured feature payload only
+* Schema versioning supported
+* Partial pipeline failures handled safely
+* Queue retry with exponential backoff
+* Dead-letter support
+
+This simulates real-world edge telemetry systems.
+
+---
+
+# Key Engineering Features
+
+### Agent
+
+* Worker isolation (capture, AI, upload, heartbeat)
+* Non-blocking runtime loop
+* Durable local queue (crash-safe)
+* Idempotent AI upload
+* Health snapshot telemetry
+* Google Drive video archival
+* Graceful degradation when OCR unavailable
+
+### Backend
+
+* Additive API evolution (no refactors required)
+* Session-scoped endpoints
+* Token-to-session binding enforcement
+* Idempotency dedupe using unique key
+* Dockerized deployment
+* Gunicorn multi-worker setup
+* MySQL strict mode enabled
+
+---
+
+# Repository Structure
+
+```
+WorkSight/
+│
+├── agent/                  # Edge node runtime
+│   ├── runtime.py
+│   ├── api_client.py
+│   ├── ai/
+│   ├── services/
+│   └── storage/
+│
+├── server/                 # Django backend
+│   ├── monitoring/
+│   ├── worksight_server/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+│
+└── README.md
+```
+
+---
+
+# Running the Backend
+
+From `server/`:
+
+```bash
+docker compose up -d --build
+docker compose exec web python manage.py migrate
+```
+
+Backend URL:
+
+```
+http://localhost:8080
+```
+
+Dashboard:
+
+```
+http://localhost:8080/dashboard/
+```
+
+Admin:
+
+```
+http://localhost:8080/admin/
+```
+
+---
+
+# Running the Agent
+
+From project root:
+
+```bash
+python -m agent.main
+```
+
+Ensure:
+
+```python
+BACKEND_BASE_URL = "http://127.0.0.1:8080/api"
+```
+
+---
+
+# API Design
+
+### Sessions
+
+```
+POST /api/sessions/
+```
+
+Creates session and binds token.
+
+---
+
+### Screenshot Upload
+
+```
+POST /api/screenshots/
+```
+
+Multipart form:
+
+* image
+* session_id
+* captured_at (ISO8601 UTC)
+
+---
+
+### AI Metrics Ingestion
+
+```
+POST /api/sessions/{session_id}/ai-metrics/
+```
+
+Headers:
+
+```
+X-Idempotency-Key: <sha256>
+```
+
+Server deduplicates automatically.
+
+---
+
+# Data Models
+
+* AgentSession
+* AgentHeartbeat
+* ScreenshotLog
+* Recording
+* AIMetric
+
+`AIMetric` stores:
+
+* Feature payload
+* Productivity score
+* Anomaly score
+* Model metadata
+* Pipeline status
+* Idempotency key
+
+---
+
+# Production-Oriented Choices
+
+### Why Edge AI?
+
+* Reduces backend CPU load
+* Improves privacy
+* Reduces bandwidth
+* Demonstrates distributed inference
+
+### Why Idempotency?
+
+Prevents duplicate metrics during:
+
+* Network retries
+* Agent restarts
+* Partial failures
+
+### Why Worker Isolation?
+
+Prevents:
+
+* AI blocking screenshot capture
+* Upload blocking heartbeat
+* Deadlocks in runtime loop
+
+### Why Additive Backend Changes?
+
+Maintains backward compatibility while evolving feature set.
+
+---
+
+# Observability
+
+Agent logs:
+
+```
+agent/storage/logs/
+```
+
+Backend logs:
+
+```
+docker compose logs -f web
+```
+
+Health telemetry includes:
+
+* AI worker alive
+* Upload worker alive
+* Queue backlog
+* Last successful AI upload
+
+---
+
+# What Makes This Interview-Ready
+
+This project showcases:
+
+* Distributed system thinking
+* Fault tolerance
+* Backoff + retry logic
+* Idempotent API contracts
+* Docker deployment
+* MySQL strict configuration
+* Edge inference patterns
+* Incremental architecture evolution
+
+It demonstrates system design awareness beyond CRUD development.
+
+---
+
+# Tech Stack
+
+* Python 3.11
+* Django
+* MySQL 8
+* Gunicorn
+* Docker + Docker Compose
+* SQLite (agent queue)
+* pytesseract (optional OCR)
+* Google Drive API
+
+---
+
+# Version
+
+**Version:** 0.2.0  
+**Status:** Edge AI Integrated + Dockerized Backend  
+**Architecture:** Agent-First, Additive Backend

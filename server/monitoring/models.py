@@ -22,11 +22,13 @@ class ScreenshotLog(models.Model):
         related_name="screenshots"
     )
 
-    image_path = models.CharField(max_length=500)
-    captured_at = models.DateTimeField(auto_now_add=True)
+    image = models.ImageField(upload_to="screenshots/", blank=True, null=True)
+    captured_at = models.DateTimeField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Screenshot @ {self.captured_at}"
+        return f"Screenshot {self.id} @ {self.captured_at}"
 
 class AgentHeartbeat(models.Model):
     session = models.OneToOneField(
@@ -88,4 +90,47 @@ class AgentToken(models.Model):
     )
     token = models.CharField(max_length=64, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class AIMetric(models.Model):
+    SOURCE_TYPE_CHOICES = [
+        ("screenshot", "Screenshot"),
+        ("recording_window", "Recording Window"),
+    ]
+
+    ANOMALY_LABEL_CHOICES = [
+        ("normal", "Normal"),
+        ("suspicious", "Suspicious"),
+        ("critical", "Critical"),
+    ]
+
+    PIPELINE_STATUS_CHOICES = [
+        ("ok", "OK"),
+        ("partial", "Partial"),
+        ("failed", "Failed"),
+    ]
+
+    session = models.ForeignKey(
+        AgentSession,
+        on_delete=models.CASCADE,
+        related_name="ai_metrics",
+    )
+    source_type = models.CharField(max_length=32, choices=SOURCE_TYPE_CHOICES)
+    source_ref = models.CharField(max_length=1024)
+    ocr_text_hash = models.CharField(max_length=64, blank=True, null=True)
+    feature_version = models.CharField(max_length=64)
+    features = models.JSONField(default=dict)
+    productivity_score = models.FloatField()
+    anomaly_score = models.FloatField()
+    anomaly_label = models.CharField(max_length=32, choices=ANOMALY_LABEL_CHOICES)
+    model_info = models.JSONField(default=dict)
+    pipeline_status = models.CharField(max_length=32, choices=PIPELINE_STATUS_CHOICES)
+    error_code = models.CharField(max_length=64, blank=True, null=True)
+    error_message = models.TextField(blank=True, null=True)
+    idempotency_key = models.CharField(max_length=64, unique=True)
+    agent_timestamp = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"AI Metric {self.id} ({self.anomaly_label})"
 

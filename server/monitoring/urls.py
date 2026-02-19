@@ -9,6 +9,7 @@ urlpatterns = [
     # Session-scoped endpoints
     path("sessions/<int:session_id>/heartbeat/", views.heartbeat),
     path("sessions/<int:session_id>/recordings/", views.upload_recording),
+    path("sessions/<int:session_id>/ai-metrics/", views.create_ai_metric),
 
     path('dashboard/', dashboard_home, name='dashboard_home'),
     path('', dashboard_home, name='home'),

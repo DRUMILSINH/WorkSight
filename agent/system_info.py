@@ -1,7 +1,7 @@
 import platform
 import socket
 import getpass
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def _get_ip_address() -> str:
@@ -28,5 +28,5 @@ def collect_system_info() -> dict:
         "hostname": socket.gethostname(),
         "username": getpass.getuser(),
         "ip_address": _get_ip_address(),
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now().isoformat() + "Z",
     }

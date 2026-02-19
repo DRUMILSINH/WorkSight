@@ -5,6 +5,7 @@ from .models import (
     AgentHeartbeat,
     Recording,
     AgentToken,
+    AIMetric,
 )
 
 
@@ -26,9 +27,9 @@ class AgentSessionAdmin(admin.ModelAdmin):
 
 @admin.register(ScreenshotLog)
 class ScreenshotLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "session", "captured_at", "image_path")
+    list_display = ("id", "session", "image", "captured_at")
     list_filter = ("captured_at",)
-    search_fields = ("image_path",)
+    search_fields = ("image",)
     date_hierarchy = "captured_at"
 
 
@@ -54,3 +55,19 @@ class RecordingAdmin(admin.ModelAdmin):
 class AgentTokenAdmin(admin.ModelAdmin):
     list_display = ("session", "token")
     search_fields = ("token",)
+
+
+@admin.register(AIMetric)
+class AIMetricAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "session",
+        "source_type",
+        "productivity_score",
+        "anomaly_score",
+        "anomaly_label",
+        "pipeline_status",
+        "agent_timestamp",
+    )
+    list_filter = ("source_type", "anomaly_label", "pipeline_status", "feature_version")
+    search_fields = ("source_ref", "idempotency_key", "error_code")

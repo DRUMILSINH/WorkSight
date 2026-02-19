@@ -1,4 +1,3 @@
-from datetime import datetime
 from agent.recording.screen_capture import capture_screen
 from agent.storage.local import LocalStorage
 from agent.storage.cleanup import cleanup_old_screenshots
@@ -23,3 +22,8 @@ class ScreenshotService:
             "Screenshot captured",
             extra={"metadata": {"path": str(screenshot_path)}},
         )
+
+        return {
+            "path": stored_path,
+            "captured_at": screenshot_path.stat().st_mtime,
+        }

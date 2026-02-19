@@ -1,5 +1,4 @@
 import shutil
-from datetime import datetime
 
 
 class HealthMonitor:
@@ -11,22 +10,22 @@ class HealthMonitor:
     def update(self):
         try:
             total, used, free = shutil.disk_usage("/")
-
             disk_percent = (used / total) * 100
             free_gb = free / (1024 ** 3)
 
-            stats = self.backend.get_recording_stats(self.hostname)
-
-            self.backend.update_system_health({
+            snapshot = {
                 "hostname": self.hostname,
-                "last_recording_time": stats.get("last_recording_time"),
-                "last_upload_time": stats.get("last_upload_time"),
-                "total_recordings": stats.get("total_recordings"),
-                "total_failures": stats.get("total_failures"),
                 "disk_usage_percent": disk_percent,
                 "free_disk_gb": free_gb,
-                "last_error": stats.get("last_error"),
-            })
+            }
+
+            if hasattr(self.backend, "update_system_health"):
+                self.backend.update_system_health(snapshot)
+            else:
+                self.logger.info(
+                    "Health snapshot",
+                    extra={"metadata": snapshot},
+                )
 
         except Exception as e:
             self.logger.error(

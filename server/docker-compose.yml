@@ -1,15 +1,16 @@
+version: "3.9"
+
 services:
+
   db:
     image: mysql:8.0
     container_name: worksight_db
-    restart: always
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: worksight_db
       MYSQL_USER: worksight_user
       MYSQL_PASSWORD: strongpassword
       MYSQL_ROOT_PASSWORD: rootpassword
-    ports:
-      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -21,9 +22,8 @@ services:
   web:
     build: .
     container_name: worksight_backend
-    command: gunicorn worksight_server.wsgi:application --bind 0.0.0.0:8000 --timeout 120
-    volumes:
-      - .:/app
+    restart: unless-stopped
+    command: gunicorn worksight_server.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120
     ports:
       - "8080:8000"
     depends_on:
@@ -34,6 +34,11 @@ services:
       DB_NAME: worksight_db
       DB_USER: worksight_user
       DB_PASSWORD: strongpassword
+      DEBUG: "True"
+      DJANGO_SECRET_KEY: supersecretkey
+    volumes:
+      - ./media:/app/media
+      - ./static:/app/static
 
 volumes:
   mysql_data:

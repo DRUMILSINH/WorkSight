@@ -15,6 +15,7 @@ from .models import (
     AgentHeartbeat,
     Recording,
     AgentToken,
+    AIMetric,
 )
 from .auth import require_agent_token
 
@@ -63,22 +64,31 @@ def create_session(request):
 # ==============================
 
 @csrf_exempt
+@require_agent_token
 def log_screenshot(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST allowed"}, status=405)
 
     try:
-        data = json.loads(request.body)
+        session_id = request.POST.get("session_id")
+        captured_at_str = request.POST.get("captured_at")
+
+        if not session_id or not captured_at_str or "image" not in request.FILES:
+            return JsonResponse({"error": "Missing data"}, status=400)
+
+        try:
+            captured_at = datetime.fromisoformat(captured_at_str.replace("Z", "+00:00"))
+        except ValueError:
+            return JsonResponse({"error": "Invalid captured_at format"}, status=400)
 
         ScreenshotLog.objects.create(
-            session_id=data["session_id"],
-            image_path=data["image_path"],
+            session_id=session_id,
+            image=request.FILES["image"],
+            captured_at=captured_at,
         )
 
         return JsonResponse({"status": "ok"}, status=201)
 
-    except (KeyError, json.JSONDecodeError) as e:
-        return JsonResponse({"error": str(e)}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
@@ -134,6 +144,82 @@ def upload_recording(request, session_id):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+@csrf_exempt
+@require_agent_token
+def create_ai_metric(request, session_id):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    idempotency_key = request.headers.get("X-Idempotency-Key")
+    if not idempotency_key:
+        return JsonResponse({"error": "Missing X-Idempotency-Key"}, status=400)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    required_fields = [
+        "agent_timestamp",
+        "source_type",
+        "source_ref",
+        "feature_version",
+        "features",
+        "productivity_score",
+        "anomaly_score",
+        "anomaly_label",
+        "model_info",
+        "pipeline_status",
+    ]
+    missing = [field for field in required_fields if field not in data]
+    if missing:
+        return JsonResponse({"error": f"Missing fields: {', '.join(missing)}"}, status=400)
+
+    if data["source_type"] not in {"screenshot", "recording_window"}:
+        return JsonResponse({"error": "Invalid source_type"}, status=400)
+    if data["anomaly_label"] not in {"normal", "suspicious", "critical"}:
+        return JsonResponse({"error": "Invalid anomaly_label"}, status=400)
+    if data["pipeline_status"] not in {"ok", "partial", "failed"}:
+        return JsonResponse({"error": "Invalid pipeline_status"}, status=400)
+    if not isinstance(data.get("features"), dict):
+        return JsonResponse({"error": "features must be an object"}, status=400)
+    if not isinstance(data.get("model_info"), dict):
+        return JsonResponse({"error": "model_info must be an object"}, status=400)
+
+    productivity_score = float(data["productivity_score"])
+    anomaly_score = float(data["anomaly_score"])
+    if productivity_score < 0 or productivity_score > 100:
+        return JsonResponse({"error": "productivity_score must be between 0 and 100"}, status=400)
+    if anomaly_score < 0 or anomaly_score > 1:
+        return JsonResponse({"error": "anomaly_score must be between 0 and 1"}, status=400)
+
+    existing = AIMetric.objects.filter(idempotency_key=idempotency_key).first()
+    if existing:
+        return JsonResponse({"ai_metric_id": existing.id, "status": "duplicate"}, status=200)
+
+    agent_timestamp_raw = data["agent_timestamp"].replace("Z", "+00:00")
+
+    metric = AIMetric.objects.create(
+        session_id=session_id,
+        agent_timestamp=datetime.fromisoformat(agent_timestamp_raw),
+        source_type=data["source_type"],
+        source_ref=data["source_ref"],
+        ocr_text_hash=data.get("ocr_text_hash"),
+        feature_version=data["feature_version"],
+        features=data["features"],
+        productivity_score=productivity_score,
+        anomaly_score=anomaly_score,
+        anomaly_label=data["anomaly_label"],
+        model_info=data["model_info"],
+        pipeline_status=data["pipeline_status"],
+        error_code=data.get("error_code"),
+        error_message=data.get("error_message"),
+        idempotency_key=idempotency_key,
+    )
+
+    return JsonResponse({"ai_metric_id": metric.id, "status": "ok"}, status=201)
+
+
 # ==============================
 # DASHBOARD
 # ==============================
@@ -157,6 +243,9 @@ def dashboard_home(request):
         'search_query': search_query,
         'total_agents': AgentSession.objects.count(),
         'active_sessions': AgentSession.objects.count(),
+        'ai_total': AIMetric.objects.count(),
+        'ai_critical': AIMetric.objects.filter(anomaly_label='critical').count(),
+        'latest_ai_metrics': AIMetric.objects.select_related('session').order_by('-agent_timestamp')[:10],
     }
 
     return render(request, 'monitoring/dashboard.html', context)
@@ -165,9 +254,13 @@ def dashboard_home(request):
 def health_view(request):
     total = Recording.objects.count()
     failed = Recording.objects.filter(status='FAILED').count()
+    ai_total = AIMetric.objects.count()
+    ai_failed = AIMetric.objects.filter(pipeline_status='failed').count()
 
     return JsonResponse({
         "timestamp": now(),
         "total_recordings": total,
         "total_failures": failed,
+        "total_ai_metrics": ai_total,
+        "total_ai_failed": ai_failed,
     })

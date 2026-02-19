@@ -11,7 +11,7 @@ def capture_screen(output_dir: Path, image_format: str = "png") -> Path:
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"screenshot_{timestamp}.{image_format}"
     file_path = output_dir / filename
 
