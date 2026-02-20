@@ -95,9 +95,7 @@ class BackendClient:
                 data=data,
                 headers=self._auth_headers(),
             )
-
             response.raise_for_status()
-
 
     # ==============================
     # RECORDING
@@ -112,7 +110,6 @@ class BackendClient:
             json=payload,
             headers=self._auth_headers(),
         )
-
         response.raise_for_status()
 
     # ==============================
@@ -156,5 +153,4 @@ class BackendClient:
                     break
                 backoff = REQUEST_BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
                 time.sleep(backoff)
-
         raise last_error

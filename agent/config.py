@@ -65,6 +65,17 @@ VIDEO_DIR = STORAGE_DIR / "videos"
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
 # =========================
+# Video Compression Settings
+# =========================
+
+VIDEO_COMPRESSION_ENABLED = True
+VIDEO_COMPRESSION_TIMEOUT_SECONDS = 180
+FFMPEG_BUNDLED_EXE = BASE_DIR / "recording" / "bin" / "ffmpeg.exe"
+VIDEO_UPLOAD_TARGET_HEIGHT = 1080
+VIDEO_COMPRESSION_CRF = 30
+VIDEO_COMPRESSION_PRESET = "fast"
+
+# =========================
 # Heartbeat Settings
 # =========================
 

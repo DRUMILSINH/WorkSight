@@ -51,7 +51,8 @@ class WorkSightAgent:
         self.recording_service = RecordingService(
             backend=self.backend,
             logger=self.logger,
-            hostname=self.hostname
+            hostname=self.hostname,
+            stop_event=self.stop_event,
         )
 
     def start(self):
