@@ -1,12 +1,14 @@
 import hashlib
-import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from PIL import Image
-
 from agent.ai.types import AIMetricV1
+from agent.ai.extractors.ocr_extractor import OCRExtractor
+from agent.ai.feature_engineering.text_features import TextFeatureEngineer
+from agent.ai.models.productivity_model import ProductivityModel
+from agent.ai.models.anomaly_model import AnomalyModel
+from agent.ai.baseline_store import BaselineStore
 from agent.config import (
     AI_FEATURE_VERSION,
     AI_MODEL_NAME,
@@ -14,15 +16,45 @@ from agent.config import (
     AI_PIPELINE_TIMEOUT_SECONDS,
 )
 
-try:
-    import pytesseract
-except Exception:
-    pytesseract = None
-
 
 class AIService:
-    def __init__(self, logger):
+    """
+    AI Pipeline Orchestrator.
+
+    Responsibilities:
+    - Run OCR
+    - Extract features
+    - Score productivity
+    - Score anomaly (statistical + fallback)
+    - Update per-agent baseline
+    - Return AIMetricV1
+    
+    Does NOT contain:
+    - Statistical math
+    - Baseline calculations
+    - ML logic
+    """
+
+    def __init__(self, logger, agent_id: str):
         self.logger = logger
+
+        # Core pipeline modules
+        self.extractor = OCRExtractor()
+        self.feature_engineer = TextFeatureEngineer()
+        self.productivity_model = ProductivityModel()
+
+        # Per-agent baseline
+        baseline_dir = Path("agent/ai/baselines")
+        baseline_dir.mkdir(parents=True, exist_ok=True)
+        baseline_path = baseline_dir / f"{agent_id}.json"
+
+        self.baseline = BaselineStore(str(baseline_path))
+
+        # Inject baseline into anomaly model
+        self.anomaly_model = AnomalyModel(self.baseline)
+        self._baseline_mature_logged = False
+
+    # ---------------------------------------------------------
 
     def process_screenshot(self, image_path: str) -> AIMetricV1:
         started = time.perf_counter()
@@ -32,29 +64,85 @@ class AIService:
         pipeline_status = "ok"
         error_code = None
         error_message = None
-        raw_text = ""
 
         try:
-            if pytesseract is not None:
-                raw_text = pytesseract.image_to_string(Image.open(image_path))
-            else:
-                pipeline_status = "partial"
-                error_code = "OCR_UNAVAILABLE"
-                error_message = "pytesseract is not installed"
+            # -------------------------------------------------
+            # 1️⃣ OCR
+            # -------------------------------------------------
+            raw_text, err_code, err_msg = self.extractor.extract_text(image_path)
 
-            elapsed = time.perf_counter() - started
-            if elapsed > AI_PIPELINE_TIMEOUT_SECONDS:
+            if err_code:
+                pipeline_status = "partial"
+                error_code = err_code
+                error_message = err_msg
+
+            # -------------------------------------------------
+            # 2️⃣ Timeout Guard
+            # -------------------------------------------------
+            if (time.perf_counter() - started) > AI_PIPELINE_TIMEOUT_SECONDS:
                 pipeline_status = "partial"
                 error_code = "PIPELINE_TIMEOUT"
-                error_message = f"pipeline exceeded {AI_PIPELINE_TIMEOUT_SECONDS}s"
+                error_message = (
+                    f"pipeline exceeded {AI_PIPELINE_TIMEOUT_SECONDS}s"
+                )
 
-            redacted = self._redact_text(raw_text)
-            features = self._extract_features(redacted)
-            productivity = self._productivity_score(redacted, features)
-            anomaly = self._anomaly_score(features)
-            label = self._anomaly_label(anomaly)
-            ocr_hash = hashlib.sha256(redacted.encode("utf-8")).hexdigest() if redacted else None
+            # -------------------------------------------------
+            # 3️⃣ Redaction + Feature Engineering
+            # -------------------------------------------------
+            redacted = self.feature_engineer.redact(raw_text)
+            features = self.feature_engineer.extract(redacted)
 
+            # -------------------------------------------------
+            # 4️⃣ Productivity Scoring
+            # -------------------------------------------------
+            productivity = self.productivity_model.predict(
+                redacted,
+                features,
+            )
+
+            # -------------------------------------------------
+            # 5️⃣ Anomaly Scoring (uses baseline)
+            # IMPORTANT: Score BEFORE updating baseline
+            # -------------------------------------------------
+            anomaly_score, explanation = self.anomaly_model.evaluate(features)
+            anomaly_label = self.anomaly_model.label(anomaly_score)
+            anomaly_mode = explanation.get("mode")
+
+
+            # -------------------------------------------------
+            # 6️⃣ Update Baseline AFTER scoring
+            # -------------------------------------------------
+            self.baseline.update(features)
+
+            # -------------------------------------------------
+            # Baseline maturity tracking (log once)
+            # -------------------------------------------------
+            if (
+                not self._baseline_mature_logged
+                and self.anomaly_model._baseline_ready()
+            ):
+                self.logger.info(
+                    "Baseline matured — switching to statistical anomaly mode.",
+                    extra={
+                        "metadata": {
+                            "source": "ai_service",
+                        }
+                    },
+                )
+                self._baseline_mature_logged = True
+
+            # -------------------------------------------------
+            # 7️⃣ Hash OCR Text
+            # -------------------------------------------------
+            ocr_hash = (
+                hashlib.sha256(redacted.encode("utf-8")).hexdigest()
+                if redacted
+                else None
+            )
+
+            # -------------------------------------------------
+            # 8️⃣ Build Metric DTO
+            # -------------------------------------------------
             return AIMetricV1(
                 agent_timestamp=now_iso,
                 source_type="screenshot",
@@ -63,89 +151,55 @@ class AIService:
                 feature_version=AI_FEATURE_VERSION,
                 features=features,
                 productivity_score=productivity,
-                anomaly_score=anomaly,
-                anomaly_label=label,
+                anomaly_score=anomaly_score,
+                anomaly_label=anomaly_label,
+                anomaly_mode=anomaly_mode,
+                anomaly_explanation=explanation,
                 model_info={
                     "name": AI_MODEL_NAME,
                     "version": AI_MODEL_VERSION,
-                    "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+                    "latency_ms": round(
+                        (time.perf_counter() - started) * 1000,
+                        2,
+                    ),
                 },
                 pipeline_status=pipeline_status,
                 error_code=error_code,
                 error_message=error_message,
             )
+
         except Exception as exc:
+            # Structured logging
             self.logger.error(
                 "AI pipeline failed",
-                extra={"metadata": {"error": str(exc), "source_ref": source_ref}},
+                extra={
+                    "metadata": {
+                        "error": str(exc),
+                        "source_ref": source_ref,
+                    }
+                },
             )
+
+            # Safe fallback metric (never crash agent)
             return AIMetricV1(
                 agent_timestamp=now_iso,
                 source_type="screenshot",
                 source_ref=source_ref,
                 ocr_text_hash=None,
                 feature_version=AI_FEATURE_VERSION,
-                features={"word_count": 0, "line_count": 0, "focus_keyword_hits": 0},
+                features={},
                 productivity_score=0.0,
                 anomaly_score=1.0,
                 anomaly_label="critical",
                 model_info={
                     "name": AI_MODEL_NAME,
                     "version": AI_MODEL_VERSION,
-                    "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+                    "latency_ms": round(
+                        (time.perf_counter() - started) * 1000,
+                        2,
+                    ),
                 },
                 pipeline_status="failed",
                 error_code="PIPELINE_ERROR",
                 error_message=str(exc),
             )
-
-    def _redact_text(self, text: str) -> str:
-        redacted = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "[EMAIL]", text)
-        redacted = re.sub(r"\b\d{3,}\b", "[NUMBER]", redacted)
-        return redacted.strip()
-
-    def _extract_features(self, text: str) -> dict:
-        words = re.findall(r"\w+", text.lower())
-        lines = [line for line in text.splitlines() if line.strip()]
-        focus_terms = {"jira", "ticket", "design", "spec", "review", "code", "build", "deploy"}
-        distract_terms = {"youtube", "netflix", "tiktok", "game", "shopping"}
-
-        focus_hits = sum(1 for token in words if token in focus_terms)
-        distract_hits = sum(1 for token in words if token in distract_terms)
-        alpha_chars = sum(1 for ch in text if ch.isalpha())
-        total_chars = len(text) if text else 1
-
-        return {
-            "word_count": len(words),
-            "line_count": len(lines),
-            "focus_keyword_hits": focus_hits,
-            "distraction_keyword_hits": distract_hits,
-            "alpha_ratio": round(alpha_chars / total_chars, 4),
-        }
-
-    def _productivity_score(self, text: str, features: dict) -> float:
-        base = 50.0
-        base += min(features["focus_keyword_hits"] * 6.0, 30.0)
-        base -= min(features["distraction_keyword_hits"] * 10.0, 40.0)
-        if features["word_count"] < 3:
-            base -= 10.0
-        if not text:
-            base -= 15.0
-        return round(max(0.0, min(100.0, base)), 2)
-
-    def _anomaly_score(self, features: dict) -> float:
-        score = 0.1
-        if features["word_count"] < 2:
-            score += 0.4
-        if features["alpha_ratio"] < 0.2:
-            score += 0.3
-        if features["distraction_keyword_hits"] > 1:
-            score += 0.3
-        return round(max(0.0, min(1.0, score)), 3)
-
-    def _anomaly_label(self, anomaly_score: float) -> str:
-        if anomaly_score >= 0.75:
-            return "critical"
-        if anomaly_score >= 0.4:
-            return "suspicious"
-        return "normal"

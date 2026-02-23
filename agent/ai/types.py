@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
-
+from typing import Optional, Dict, Any
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -19,6 +18,9 @@ class AIMetricV1:
     anomaly_label: str
     model_info: dict[str, Any]
     pipeline_status: str
+    anomaly_explanation: Optional[Dict[str, Any]] = None
+    anomaly_mode: Optional[str] = None
+    anomaly_mode: str | None = None
     ocr_text_hash: str | None = None
     error_code: str | None = None
     error_message: str | None = None
