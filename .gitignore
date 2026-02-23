@@ -95,3 +95,6 @@ agent/credentials/*token*
 .ropeproject/
 .cache/
 
+# Databases and Logs
+*.sqlite3
+*.log

@@ -39,7 +39,8 @@ class WorkSightAgent:
         self.hostname = socket.gethostname()
         self.system_info = collect_system_info()
         self.backend = BackendClient(self.logger)
-        self.ai_service = AIService(self.logger)
+        agent_id = self.system_info["hostname"]
+        self.ai_service = AIService(self.logger, agent_id)
         self.ai_queue_store = AIQueueStore(AI_QUEUE_DB_PATH)
         self.capture_queue = Queue(maxsize=200)
         self.stop_event = threading.Event()

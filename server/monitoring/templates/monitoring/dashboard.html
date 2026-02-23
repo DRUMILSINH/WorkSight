@@ -2,42 +2,117 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>System Overview</h2>
+    <h2 class="mb-0">Operations Dashboard</h2>
     <span class="text-muted small"><i class="fas fa-sync"></i> Live Data</span>
 </div>
 
+<div class="alert alert-{{ system_status_class }} d-flex justify-content-between align-items-center mb-4" role="alert">
+    <div>
+        <strong>Status: {{ system_status }}</strong><br>
+        {% if top_risky_session %}
+            Highest risk session: <strong>{{ top_risky_session.username }}</strong> ({{ top_risky_session.hostname }}) -
+            {{ top_risky_session.critical_last_30min }} critical in last 30m.
+        {% else %}
+            No high-risk session detected right now.
+        {% endif %}
+    </div>
+    <div class="text-end small">
+        <div>High: <strong>{{ risk_high_count }}</strong></div>
+        <div>Medium: <strong>{{ risk_medium_count }}</strong></div>
+        <div>Low: <strong>{{ risk_low_count }}</strong></div>
+    </div>
+</div>
+
 <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card shadow-sm border-start border-4 border-primary">
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm h-100">
             <div class="card-body">
                 <h6 class="text-muted text-uppercase small">Active Sessions</h6>
                 <h3 class="mb-0">{{ active_sessions }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-start border-4 border-success">
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm h-100">
             <div class="card-body">
-                <h6 class="text-muted text-uppercase small">Total Agents</h6>
-                <h3 class="mb-0">{{ total_agents }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-start border-4 border-warning">
-            <div class="card-body">
-                <h6 class="text-muted text-uppercase small">AI Metrics</h6>
+                <h6 class="text-muted text-uppercase small">AI Metrics Received</h6>
                 <h3 class="mb-0">{{ ai_total }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-sm border-start border-4 border-danger">
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm h-100">
             <div class="card-body">
-                <h6 class="text-muted text-uppercase small">Critical Anomalies</h6>
-                <h3 class="mb-0">{{ ai_critical }}</h3>
+                <h6 class="text-muted text-uppercase small">Critical Alerts</h6>
+                <h3 class="mb-0 text-danger">{{ ai_critical }}</h3>
             </div>
         </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Pipeline Failures</h6>
+                <h3 class="mb-0 {% if ai_failed %}text-danger{% else %}text-success{% endif %}">{{ ai_failed }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 text-secondary">What To Check First</h5>
+    </div>
+    <div class="card-body">
+        <ul class="mb-0">
+            <li>If <strong>Pipeline Failures</strong> > 0, inspect agent logs first.</li>
+            <li>If <strong>High Risk Sessions</strong> > 0, review those sessions in analytics table.</li>
+            <li>If both are zero, system is stable and ingestion is healthy.</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 text-secondary">Session Risk Summary (Top 8)</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Session</th>
+                    <th>Risk</th>
+                    <th>Critical (30m)</th>
+                    <th>Suspicious (30m)</th>
+                    <th>Total Metrics</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in session_analytics_rows %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold">{{ row.username }}</div>
+                        <small class="text-muted">{{ row.hostname }} | #{{ row.session_id }}</small>
+                    </td>
+                    <td>
+                        {% if row.risk_level == "HIGH" %}
+                            <span class="badge bg-danger">HIGH</span>
+                        {% elif row.risk_level == "MEDIUM" %}
+                            <span class="badge bg-warning text-dark">MEDIUM</span>
+                        {% else %}
+                            <span class="badge bg-success">LOW</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ row.critical_last_30min }}</td>
+                    <td>{{ row.suspicious_last_30min }}</td>
+                    <td>{{ row.total_metrics }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">No session analytics yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -111,29 +186,49 @@
     </div>
 </div>
 
-<div class="card shadow-sm mt-4">
-    <div class="card-header bg-white py-3">
-        <h5 class="mb-0 text-secondary">Latest AI Metrics</h5>
-    </div>
+<details class="card shadow-sm mt-4">
+    <summary class="card-header bg-white py-3 text-secondary" style="cursor: pointer;">
+        Latest AI Metrics (Detailed)
+    </summary>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
                     <th>Time</th>
-                    <th>User</th>
+                    <th>Session</th>
                     <th>Productivity</th>
-                    <th>Anomaly</th>
-                    <th>Status</th>
+                    <th>Anomaly Signal</th>
+                    <th>Pipeline</th>
                 </tr>
             </thead>
             <tbody>
                 {% for metric in latest_ai_metrics %}
                 <tr>
                     <td>{{ metric.agent_timestamp|date:"Y-m-d H:i:s" }}</td>
-                    <td><span class="fw-bold text-dark">{{ metric.session.username }}</span></td>
-                    <td>{{ metric.productivity_score }}</td>
-                    <td>{{ metric.anomaly_label }} ({{ metric.anomaly_score }})</td>
-                    <td>{{ metric.pipeline_status }}</td>
+                    <td>
+                        <div class="fw-semibold text-dark">{{ metric.session.username }}</div>
+                        <small class="text-muted">{{ metric.session.hostname }} | #{{ metric.session.id }}</small>
+                    </td>
+                    <td>{{ metric.productivity_score|floatformat:1 }}%</td>
+                    <td>
+                        {% if metric.anomaly_label == "critical" %}
+                            <span class="badge bg-danger">critical</span>
+                        {% elif metric.anomaly_label == "suspicious" %}
+                            <span class="badge bg-warning text-dark">suspicious</span>
+                        {% else %}
+                            <span class="badge bg-success">normal</span>
+                        {% endif %}
+                        <small class="text-muted ms-2">{{ metric.anomaly_score|floatformat:3 }}</small>
+                    </td>
+                    <td>
+                        {% if metric.pipeline_status == "failed" %}
+                            <span class="badge bg-danger">failed</span>
+                        {% elif metric.pipeline_status == "partial" %}
+                            <span class="badge bg-warning text-dark">partial</span>
+                        {% else %}
+                            <span class="badge bg-success">ok</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -143,5 +238,6 @@
             </tbody>
         </table>
     </div>
-</div>
+</details>
 {% endblock %}
+

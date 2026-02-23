@@ -131,6 +131,13 @@ class AIMetric(models.Model):
     agent_timestamp = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["session", "created_at"]),
+            models.Index(fields=["anomaly_label"]),
+            models.Index(fields=["created_at"]),
+        ]
+
     def __str__(self):
         return f"AI Metric {self.id} ({self.anomaly_label})"
 

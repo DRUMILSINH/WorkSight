@@ -18,6 +18,7 @@ from .models import (
     AIMetric,
 )
 from .auth import require_agent_token
+from .services.analytics import get_session_analytics
 
 
 # ==============================
@@ -238,14 +239,72 @@ def dashboard_home(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    latest_metrics = AIMetric.objects.select_related('session').order_by('-agent_timestamp')[:10]
+
+    session_analytics_rows = []
+    sessions_for_summary = (
+        AgentSession.objects.order_by('-started_at')
+        .values("id", "username", "hostname")[:8]
+    )
+    for session in sessions_for_summary:
+        analytics = get_session_analytics(session["id"])
+        session_analytics_rows.append({
+            "session_id": session["id"],
+            "username": session["username"],
+            "hostname": session["hostname"],
+            "baseline_mature_percent": analytics["baseline_mature_ratio"] * 100,
+            **analytics,
+        })
+
+    risk_counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    for row in session_analytics_rows:
+        risk_counts[row["risk_level"]] += 1
+
+    top_risky_session = None
+    for row in session_analytics_rows:
+        if row["risk_level"] == "HIGH":
+            top_risky_session = row
+            break
+    if not top_risky_session:
+        for row in session_analytics_rows:
+            if row["risk_level"] == "MEDIUM":
+                top_risky_session = row
+                break
+
+    ai_total = AIMetric.objects.count()
+    ai_critical = AIMetric.objects.filter(anomaly_label='critical').count()
+    ai_suspicious = AIMetric.objects.filter(anomaly_label='suspicious').count()
+    ai_failed = AIMetric.objects.filter(pipeline_status='failed').count()
+    active_sessions = AgentSession.objects.count()
+    total_agents = AgentSession.objects.count()
+
+    if risk_counts["HIGH"] > 0 or ai_failed > 0:
+        system_status = "ATTENTION REQUIRED"
+        system_status_class = "danger"
+    elif risk_counts["MEDIUM"] > 0:
+        system_status = "MONITOR CLOSELY"
+        system_status_class = "warning"
+    else:
+        system_status = "STABLE"
+        system_status_class = "success"
+
     context = {
         'logs': page_obj,
         'search_query': search_query,
-        'total_agents': AgentSession.objects.count(),
-        'active_sessions': AgentSession.objects.count(),
-        'ai_total': AIMetric.objects.count(),
-        'ai_critical': AIMetric.objects.filter(anomaly_label='critical').count(),
-        'latest_ai_metrics': AIMetric.objects.select_related('session').order_by('-agent_timestamp')[:10],
+        'total_agents': total_agents,
+        'active_sessions': active_sessions,
+        'ai_total': ai_total,
+        'ai_critical': ai_critical,
+        'latest_ai_metrics': latest_metrics,
+        'ai_suspicious': ai_suspicious,
+        'ai_failed': ai_failed,
+        'session_analytics_rows': session_analytics_rows,
+        'risk_high_count': risk_counts["HIGH"],
+        'risk_medium_count': risk_counts["MEDIUM"],
+        'risk_low_count': risk_counts["LOW"],
+        'system_status': system_status,
+        'system_status_class': system_status_class,
+        'top_risky_session': top_risky_session,
     }
 
     return render(request, 'monitoring/dashboard.html', context)
