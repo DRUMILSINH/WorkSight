@@ -1,51 +1,35 @@
-# Python
-# Byte-compiled / optimized / DLL files
+# Python bytecode / cache
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
 *$py.class
+
+# Compiled extensions
 *.so
 
-# C extensions
-*.pyd
-
-# Distribution / packaging
-build/
-dist/
-eggs/
-.eggs/
-*.egg-info/
-*.egg
-pip-wheel-metadata/
-share/python-wheels/
-MANIFEST
-
 # Virtual environments
+.venv/
 venv/
 env/
-.venv/
 ENV/
 env.bak/
 venv.bak/
 
-# Editor directories and OS metadata
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-.project
-.pydevproject
-.settings/
-*.sublime-project
-*.sublime-workspace
-
-# Environment variables and secrets
+# Environment / secrets
 .env
 .env.*
 
-# Python testing / reporting
+# Distribution / packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+MANIFEST
+
+# Testing / reports
 .pytest_cache/
 .coverage
 .coverage.*
@@ -55,46 +39,65 @@ htmlcov/
 .mypy_cache/
 
 # Logs
-logs/
 *.log
-*.json
+logs/
 
-# Temporary & backup files
+# Temporary / backup
 *.tmp
 *.bak
 *.orig
 
-# Node
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (if frontend tooling is added)
 node_modules/
 package-lock.json
 yarn.lock
 
-# Project-specific: generated storage content
-# Keep folders but ignore generated files; add .gitkeep to retain empty dirs
+# Agent generated artifacts
 agent/storage/logs/*
 agent/storage/screenshots/*
 agent/storage/videos/*
+agent/storage/videos/*.part
+agent/storage/videos/*.tmp
+agent/storage/videos/*_compressed.mp4
+agent/storage/ai_queue.sqlite3
+agent/ai/baselines/*.json
+
+# Keep folder placeholders
 !agent/storage/logs/.gitkeep
 !agent/storage/screenshots/.gitkeep
 !agent/storage/videos/.gitkeep
 
-# Credentials and tokens (do NOT commit secrets). Use example/template files instead.
+# Agent credentials and tokens
 agent/credentials/*.json
 agent/credentials/*.token
 agent/credentials/*token*
 
-# If you want to track a credentials template, add it as e.g. agent/credentials/credentials.json.example
-
-# Django / server
+# Django / backend runtime artifacts
 /server/staticfiles/
+/server/static/
 /server/media/
 /server/local_settings.py
 /server/db.sqlite3
 
+# Local databases
+*.sqlite3
+
 # Misc
 .ropeproject/
 .cache/
-
-# Databases and Logs
-*.sqlite3
-*.log
