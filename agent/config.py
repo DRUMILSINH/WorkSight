@@ -31,7 +31,7 @@ LOG_LEVEL = "INFO"
 # =========================
 
 AGENT_NAME = "WorkSight-Agent"
-AGENT_VERSION = "0.1.0"
+AGENT_VERSION = "0.2.0"
 
 # =========================
 # Backend API Settings
